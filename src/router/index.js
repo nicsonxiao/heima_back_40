@@ -5,7 +5,7 @@ import Login from '@/views/Login.vue'
 import Index from '@/views/Index.vue'
 import Welcome from '@/views/Welcome.vue'
 import PostList from '@/views/PostList.vue'
-import PublishPost from '@/views/PublishPost.vue'
+import PostPublish from '@/views/PostPublish.vue'
 
 Vue.use(VueRouter)
 
@@ -38,9 +38,9 @@ let router =new VueRouter({
                     component:PostList
                 },
                 {
-                    name:'publishPost',
-                    path:'publishPost',
-                    component:PublishPost
+                    name:'Postpublish',
+                    path:'Postpublish',
+                    component:PostPublish
                 }
             ]
         }

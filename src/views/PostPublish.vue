@@ -29,8 +29,8 @@
             class="upload-demo"
             action="http://127.0.0.1:3000/upload"
             :headers="setToken()"
+            :before-upload="beforeUpload"
             :on-success="handlerSuccess"
-            :on-remove="handleRemove"
             :file-list="fileList"
           >
             <el-button size="small" type="primary">点击上传</el-button>
@@ -51,7 +51,16 @@
         </el-form-item>
         <!-- 封面 -->
         <el-form-item label="封面：">
-          <el-upload action="https://jsonplaceholder.typicode.com/posts/" list-type="picture-card">
+          <el-upload
+            action="http://127.0.0.1:3000/upload"
+            list-type="picture-card"
+            :headers="setToken()"
+            :before-upload="beforeUploadImg"
+            :on-success="setCover"
+            :on-remove="removeCover"
+            :limit="3"
+            :drag="true"
+          >
             <i class="el-icon-plus"></i>
           </el-upload>
         </el-form-item>
@@ -68,6 +77,7 @@
 import VueEditor from 'vue-word-editor'
 import 'quill/dist/quill.snow.css'
 import { getCateList } from '@/api/cate.js'
+import {postArticle} from '@/api/article.js'
 
 export default {
   data() {
@@ -113,40 +123,97 @@ export default {
   },
   methods: {
     //绑定发布按钮
-    publishPost() {
-      console.log(this.postForm)
+   async publishPost() {
+      //获取富文本框的数据，并赋值给postForm的content属性
+      //当type类型为1的才需要获取富文本框的内容
       if (this.postForm.type === 1) {
         this.postForm.content = this.$refs.postContent.editor.root.innerHTML
       }
+      //获取栏目数据,checkedCate是数字数组
+      this.checkedCate.forEach(value=>{
+        this.postForm.categories.push({
+          id:value
+        })
+      })
+      console.log(this.postForm);
+      let res =await postArticle(this.postForm)
+      console.log(res)
+      if(res.data.message==="文章发布成功"){
+        this.$message.success(res.data.message)
+        this.$router.push({name:'PostList'})
+      }
     },
+    //设置请求头
     setToken() {
+      //因为后台管理基本需要有权限才可以进行访问，所以需要验证Authorization，并封装方便以后使用
       let token = localStorage.getItem('heima_40_back_token')
       return {
         Authorization: token
       }
     },
-    handleRemove(file, fileList) {
-      console.log(file, fileList)
-    },
-    handlePreview(file) {
-      console.log(file)
-    },
-    handleCheckAllChange(val) {
-      console.log(val)
-      // this.checkedCities = val ? cityOptions : [];
-      // this.isIndeterminate = false;
-    },
-    handleCheckedCateChange(value) {
-      console.log(value)
-      // let checkedCount = value.length;
-      // this.checkAll = checkedCount === this.cities.length;
-      // this.isIndeterminate = checkedCount > 0 && checkedCount < this.cities.length;
-    },
-    handlerSuccess(response){
-      if(response.message==='文件上传成功'){
-        this.postForm.content=response.data.url
+    //视频上传之前的钩子，如果在这个钩子中return false则可以终止本次上传操作
+    beforeUpload(file) {
+      //根据mime类型判断上传的内容是否符合标准，如果不是指定的类型，则给予提示
+      if (file.type.indexOf('video/') !== 0) {
+        this.$message.warning('请选择视频文件')
+        return false
       }
-      
+    },
+    //封面上传验证
+    beforeUploadImg(file) {
+      console.log(file)
+      //根据mime类型判断上传的内容是否符合标准，如果不是指定的类型，则给予提示
+      if (file.type.indexOf('image/') !== 0) {
+        this.$message.warning('请选择图片文件')
+        return false
+      }
+    },
+    //封面上传成功后，存储图片id到postForm.cover中
+    setCover(response){
+      // console.log(response)
+      if(response.message==='文件上传成功'){
+        //追加图片id，生成后台接口所需要的数据格式
+        this.postForm.cover.push({
+          id:response.data.id
+        })
+      }
+    },
+    //移除封面
+    removeCover(file){
+      let id=file.response.data.id
+      //遍历cover数组,删除对应id的图片
+      this.postForm.cover.forEach((value,index)=>{
+        if(value.id===id){
+          this.postForm.cover.splice(index,1)
+        }
+      })
+    },
+    //多选框组、全选
+    handleCheckAllChange(val) {
+      // console.log(val)
+      // val值为true,说明为全选状态，为false为全不选状态
+      this.checkedCate = val
+        ? this.cateList.map(value => {
+            return value.id
+          })
+        : []
+      //如果全选按钮为全选或者全不选的状态，那就把不确定状态切换为确定状态(false)
+      this.isIndeterminate = false
+    },
+    //多选框组中选中的单选项
+    handleCheckedCateChange(value) {
+      // console.log(value)
+      let checkedCount = value.length
+      this.checkAll = checkedCount === this.cateList.length
+      this.isIndeterminate =
+        checkedCount > 0 && checkedCount < this.cateList.length
+    },
+    //如果type类型为2视频，那就把视频上传成功后的路径赋值给content
+    handlerSuccess(response) {
+      if (response.message === '文件上传成功') {
+        this.postForm.content = response.data.url
+        this.$message.success('视频上传成功')
+      }
     }
   },
   async mounted() {
@@ -157,5 +224,9 @@ export default {
 }
 </script>
 
-<style>
+<style lang="less" scoped>
+/deep/.el-upload-dragger{
+  width: 100%;
+  height: 100%;
+}
 </style>

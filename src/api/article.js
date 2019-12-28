@@ -7,3 +7,13 @@ export const getPostList=(params)=>{
         params
     })
 }
+
+
+//发布文章
+export const postArticle=data=>{
+    return axios({
+        method:'post',
+        url:'/post',
+        data
+    })
+}
